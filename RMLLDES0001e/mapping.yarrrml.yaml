@@ -1,0 +1,78 @@
+# Implicit create, update and delete.
+# All data comes from the same source.
+
+prefixes:
+  ex: http://example.com/
+  as: https://www.w3.org/ns/activitystreams#
+
+sources:
+  source:
+    access: base.json
+    referenceFormulation: jsonpath
+    iterator: $.sensors[*]
+
+targets:
+  target-ldes:
+    access: out-ldes.nq
+    type: localfile
+    serialization: nquads
+    ldes:
+      id: ex:ldes
+      timestampPath: dcterms:created
+      versionOfPath: dcterms:isVersionOf
+      generateImmutableIRI: false
+
+mappings:
+
+  # The values of the sensors. These 'sensor objects' become member of an LDES
+  sensor-reading:
+
+    sources: source
+
+    subjects:
+      - value: ex:sensor/$(sensor)
+        targets: target-ldes
+
+    predicateobjects:
+      - [ex:pressure, $(pressure)]
+      - [ex:temperature, $(temperature)]
+
+    changeDetection:
+      create:
+        explicit: false
+        mappingAdd:
+          graphs: ex:create
+
+      update:
+        explicit: false
+        watchedProperties: [$(temperature)]
+        mappingAdd:
+          graphs: ex:update
+
+      delete:
+        explicit: false
+        mappingAdd:
+          graphs: ex:delete
+
+  # Each LDES member is part of a graph, which describes the operation
+  # performed: create, update or delete. We describe the graphs as
+  # Activity Streams event
+  # This should generate a static triples map (and new RML has this feature!)
+
+  graph-create:
+    subjects: ex:create
+    predicateobjects:
+      - [a, as:Create~iri]
+      - [as:actor, ex:dataset~iri]
+
+  graph-update:
+    subjects: ex:update
+    predicateobjects:
+      - [a, as:Update~iri]
+      - [as:actor, ex:dataset~iri]
+
+  graph-delete:
+    subjects: ex:delete
+    predicateobjects:
+      - [a, as:Delete~iri]
+      - [as:actor, ex:dataset~iri]
